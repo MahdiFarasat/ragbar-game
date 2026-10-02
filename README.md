@@ -2,7 +2,7 @@
 
 یک بازی اکشن مینیمال در سبک **Reverse Bullet Hell / Horde Survival** که به صورت تک‌فایلی (`Single-File`) و بدون هیچ‌گونه فریم‌ورک یا کتابخانه جانبی پیاده‌سازی شده است.
 
-🎮 **[اجرای آنلاین و تجربه بازی](https://MahdiFarasat.github.io/ragbar-game/)**
+🎮 **[اجرای آنلاین و تجربه بازی](https://MahdiFarasat.github.io/ragbar/)**
 
 ---
 
