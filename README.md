@@ -1,8 +1,13 @@
 # ⚡ Ragbar (رگبار)
 
+![Platform](https://img.shields.io/badge/Platform-Desktop%20Only-blue?style=flat-square&logo=windows)
+![Controls](https://img.shields.io/badge/Controls-Keyboard%20%26%20Mouse-orange?style=flat-square)
+
 یک بازی اکشن مینیمال در سبک **Reverse Bullet Hell / Horde Survival** که به صورت تک‌فایلی (`Single-File`) و بدون هیچ‌گونه فریم‌ورک یا کتابخانه جانبی پیاده‌سازی شده است.
 
 🎮 **[اجرای آنلاین و تجربه بازی](https://IamMFK.github.io/ragbar/)**
+
+> ⚠️ **توجه:** این بازی مخصوص **کامپیوتر و لپ‌تاپ (Desktop Only)** طراحی شده است و به کیبورد و ماوس نیاز دارد. در حال حاضر نسخه لمسی/موبایل ندارد.
 
 ---
 
