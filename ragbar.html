@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vampire Survivors - Web Edition</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: #0b0c10;
+      color: #c5c6c7;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      display: block;
+      background: radial-gradient(circle at center, #1f2833 0%, #0b0c10 100%);
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+    }
+
+    /* رابط کاربری بالای صفحه (HUD) */
+    #hud {
+      position: absolute;
+      top: 15px;
+      left: 20px;
+      right: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      font-size: 18px;
+      font-weight: bold;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+      z-index: 10;
+      direction: ltr;
+    }
+
+    .hud-box {
+      background: rgba(15, 20, 25, 0.7);
+      border: 1px solid #45a29e;
+      padding: 8px 16px;
+      border-radius: 8px;
+      backdrop-filter: blur(4px);
+    }
+
+    #xp-bar-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      z-index: 15;
+    }
+
+    #xp-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #66fcf1, #45a29e);
+      box-shadow: 0 0 10px #66fcf1;
+      transition: width 0.15s ease-out;
+    }
+
+    /* پاپ‌آپ‌های Level Up و Game Over */
+    .modal {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(11, 12, 16, 0.92);
+      border: 2px solid #66fcf1;
+      box-shadow: 0 0 35px rgba(102, 252, 241, 0.4);
+      padding: 30px;
+      border-radius: 12px;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+      text-align: center;
+      min-width: 320px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .modal h2 {
+      color: #66fcf1;
+      margin-bottom: 20px;
+      font-size: 28px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .card-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .upgrade-card {
+      background: #1f2833;
+      border: 1px solid #45a29e;
+      padding: 12px 18px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+    }
+
+    .upgrade-card:hover {
+      background: #45a29e;
+      color: #0b0c10;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 252, 241, 0.4);
+    }
+
+    .upgrade-card h4 {
+      font-size: 16px;
+      margin: 0;
+    }
+
+    .upgrade-card p {
+      font-size: 13px;
+      opacity: 0.85;
+      margin: 0;
+    }
+
+    .btn {
+      background: #66fcf1;
+      color: #0b0c10;
+      border: none;
+      font-size: 16px;
+      font-weight: bold;
+      padding: 12px 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #45a29e;
+      box-shadow: 0 0 15px #66fcf1;
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+  <div id="xp-bar-container">
+    <div id="xp-bar"></div>
+  </div>
+
+  <div id="hud">
+    <div class="hud-box">Level: <span id="lvl-display">1</span></div>
+    <div class="hud-box">HP: <span id="hp-display">100 / 100</span></div>
+    <div class="hud-box">Kills: <span id="kill-display">0</span></div>
+    <div class="hud-box">Time: <span id="time-display">00:00</span></div>
+  </div>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- لول آپ مودال -->
+  <div id="level-up-modal" class="modal hidden">
+    <h2>سطح بعدی! (Level Up)</h2>
+    <p style="margin-bottom: 15px; font-size: 14px;">یک قابلیت برای ارتقا انتخاب کنید:</p>
+    <div id="upgrade-options" class="card-list"></div>
+  </div>
+
+  <!-- گیم اور مودال -->
+  <div id="game-over-modal" class="modal hidden">
+    <h2 style="color: #e74c3c;">شما کشته شدید!</h2>
+    <p id="game-over-stats" style="margin-bottom: 20px; line-height: 1.6;"></p>
+    <button class="btn" onclick="game.restart()">شروع مجدد</button>
+  </div>
+</div>
+
+<script>
+/**
+ * سیستم صوتی با Web Audio API
+ */
+class SoundController {
+  constructor() {
+    this.ctx = null;
+  }
+
+  init() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+  }
+
+  playShoot() {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(450, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(120, this.ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.08);
+  }
+
+  playHit() {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.05);
+    gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.05);
+  }
+
+  playGem() {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(900, this.ctx.currentTime + 0.07);
+    gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.07);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.07);
+  }
+
+  playLevelUp() {
+    if (!this.ctx) return;
+    const notes = [440, 554.37, 659.25, 880];
+    notes.forEach((freq, idx) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.07);
+      gain.gain.setValueAtTime(0.15, this.ctx.currentTime + idx * 0.07);
+      gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.07 + 0.12);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(this.ctx.currentTime + idx * 0.07);
+      osc.stop(this.ctx.currentTime + idx * 0.07 + 0.12);
+    });
+  }
+}
+
+/**
+ * مدیریت ورودی کیبورد
+ */
+class InputHandler {
+  constructor() {
+    this.keys = {};
+    window.addEventListener('keydown', (e) => {
+      this.keys[e.key.toLowerCase()] = true;
+      if (sound) sound.init();
+    });
+    window.addEventListener('keyup', (e) => {
+      this.keys[e.key.toLowerCase()] = false;
+    });
+  }
+
+  isDown(key) {
+    return !!this.keys[key];
+  }
+}
+
+/**
+ * بازیکن
+ */
+class Player {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.radius = 16;
+    this.color = '#66fcf1';
+    this.speed = 3.2;
+    this.maxHp = 100;
+    this.hp = 100;
+    this.level = 1;
+    this.xp = 0;
+    this.nextXp = 10;
+    this.shootInterval = 400;
+    this.lastShoot = 0;
+    this.bulletDamage = 25;
+    this.bulletSpeed = 8;
+    this.pierce = 1;
+    this.bulletCount = 1;
+  }
+
+  update(input, width, height) {
+    let dx = 0;
+    let dy = 0;
+
+    if (input.isDown('w') || input.isDown('arrowup')) dy -= 1;
+    if (input.isDown('s') || input.isDown('arrowdown')) dy += 1;
+    if (input.isDown('a') || input.isDown('arrowleft')) dx -= 1;
+    if (input.isDown('d') || input.isDown('arrowright')) dx += 1;
+
+    if (dx !== 0 && dy !== 0) {
+      dx *= 0.7071;
+      dy *= 0.7071;
+    }
+
+    this.x = Math.max(this.radius, Math.min(width - this.radius, this.x + dx * this.speed));
+    this.y = Math.max(this.radius, Math.min(height - this.radius, this.y + dy * this.speed));
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius * 0.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#0b0c10';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  gainXp(amount) {
+    this.xp += amount;
+    if (this.xp >= this.nextXp) {
+      this.levelUp();
+    }
+  }
+
+  levelUp() {
+    this.xp -= this.nextXp;
+    this.level++;
+    this.nextXp = Math.floor(this.nextXp * 1.45);
+    sound.playLevelUp();
+    game.triggerLevelUpModal();
+  }
+}
+
+/**
+ * گلوله‌ها
+ */
+class Bullet {
+  constructor(x, y, targetX, targetY, damage, speed, pierce = 1) {
+    this.x = x;
+    this.y = y;
+    this.radius = 4;
+    this.color = '#fff';
+    this.damage = damage;
+    this.speed = speed;
+    this.pierce = pierce;
+    this.hits = 0;
+    this.markedForDeletion = false;
+
+    const angle = Math.atan2(targetY - y, targetX - x);
+    this.vx = Math.cos(angle) * this.speed;
+    this.vy = Math.sin(angle) * this.speed;
+  }
+
+  update(width, height) {
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.x < 0 || this.x > width || this.y < 0 || this.y > height) {
+      this.markedForDeletion = true;
+    }
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = '#66fcf1';
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+/**
+ * دشمنان
+ */
+class Enemy {
+  constructor(x, y, type = 'normal') {
+    this.x = x;
+    this.y = y;
+    this.type = type;
+    this.markedForDeletion = false;
+
+    if (type === 'fast') {
+      this.radius = 10;
+      this.color = '#ff0055';
+      this.speed = 2.4;
+      this.hp = 20;
+      this.damage = 8;
+      this.xpValue = 2;
+    } else {
+      this.radius = 14;
+      this.color = '#e74c3c';
+      this.speed = 1.3;
+      this.hp = 50;
+      this.damage = 12;
+      this.xpValue = 1;
+    }
+  }
+
+  update(player) {
+    const angle = Math.atan2(player.y - this.y, player.x - this.x);
+    this.x += Math.cos(angle) * this.speed;
+    this.y += Math.sin(angle) * this.speed;
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.shadowBlur = 6;
+    ctx.shadowColor = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+/**
+ * کریستال تجربه
+ */
+class Gem {
+  constructor(x, y, value) {
+    this.x = x;
+    this.y = y;
+    this.value = value;
+    this.radius = 5;
+    this.markedForDeletion = false;
+  }
+
+  update(player) {
+    const dx = player.x - this.x;
+    const dy = player.y - this.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist < 120) {
+      this.x += (dx / dist) * 6;
+      this.y += (dy / dist) * 6;
+    }
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#66fcf1';
+    ctx.shadowBlur = 6;
+    ctx.shadowColor = '#66fcf1';
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+/**
+ * پارتیکل‌های انفجار
+ */
+class Particle {
+  constructor(x, y, color) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+    this.radius = Math.random() * 2.5 + 1;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 3 + 1;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.alpha = 1;
+    this.decay = Math.random() * 0.03 + 0.02;
+    this.markedForDeletion = false;
+  }
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.alpha -= this.decay;
+    if (this.alpha <= 0) this.markedForDeletion = true;
+  }
+
+  draw(ctx) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, this.alpha);
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+/**
+ * موتور اصلی بازی
+ */
+class GameEngine {
+  constructor() {
+    this.canvas = document.getElementById('gameCanvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.input = new InputHandler();
+    this.resizeCanvas();
+
+    window.addEventListener('resize', () => this.resizeCanvas());
+
+    this.player = new Player(this.width / 2, this.height / 2);
+    this.bullets = [];
+    this.enemies = [];
+    this.gems = [];
+    this.particles = [];
+
+    this.isPaused = false;
+    this.isGameOver = false;
+    this.kills = 0;
+    this.startTime = 0;
+    this.lastSpawnTime = 0;
+    this.spawnInterval = 1000;
+
+    this.availableUpgrades = [
+      { id: 'fire_rate', title: 'افزایش سرعت شلیک', desc: 'سرعت شلیک گلوله‌ها ۲۰٪ بیشتر می‌شود.', apply: () => this.player.shootInterval = Math.max(100, this.player.shootInterval * 0.8) },
+      { id: 'move_speed', title: 'سرعت حرکت', desc: 'سرعت جابجایی کاراکتر ۱۵٪ افزایش می‌یابد.', apply: () => this.player.speed += 0.5 },
+      { id: 'damage', title: 'قدرت تخریب گلوله', desc: 'آسیب وارده توسط هر گلوله ۳۰٪ بیشتر می‌شود.', apply: () => this.player.bulletDamage += 10 },
+      { id: 'heal', title: 'ترمیم و افزایش سلامت', desc: 'جان فعلی بازیکن پر شده و حداکثر جان ۲۰ واحد اضافه می‌شود.', apply: () => { this.player.maxHp += 20; this.player.hp = this.player.maxHp; } },
+      { id: 'multishot', title: 'تیراندازی چندگانه', desc: 'تعداد گلوله‌های شلیک‌شده در هر نوبت افزایش می‌یابد.', apply: () => this.player.bulletCount += 1 }
+    ];
+
+    this.loop = this.loop.bind(this);
+    requestAnimationFrame(this.loop);
+  }
+
+  resizeCanvas() {
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+    this.canvas.width = this.width;
+    this.canvas.height = this.height;
+  }
+
+  spawnEnemy() {
+    const edge = Math.floor(Math.random() * 4);
+    let x, y;
+    if (edge === 0) { x = Math.random() * this.width; y = -20; }
+    else if (edge === 1) { x = this.width + 20; y = Math.random() * this.height; }
+    else if (edge === 2) { x = Math.random() * this.width; y = this.height + 20; }
+    else { x = -20; y = Math.random() * this.height; }
+
+    const isFast = Math.random() < 0.25;
+    this.enemies.push(new Enemy(x, y, isFast ? 'fast' : 'normal'));
+  }
+
+  handleAutoShoot(currentTime) {
+    if (currentTime - this.player.lastShoot < this.player.shootInterval || this.enemies.length === 0) return;
+
+    let nearestEnemy = null;
+    let minDist = Infinity;
+
+    for (const enemy of this.enemies) {
+      const dist = Math.hypot(enemy.x - this.player.x, enemy.y - this.player.y);
+      if (dist < minDist) {
+        minDist = dist;
+        nearestEnemy = enemy;
+      }
+    }
+
+    if (nearestEnemy && minDist < 600) {
+      this.player.lastShoot = currentTime;
+      sound.playShoot();
+
+      const baseAngle = Math.atan2(nearestEnemy.y - this.player.y, nearestEnemy.x - this.player.x);
+      const count = this.player.bulletCount;
+      const spread = 0.18;
+
+      for (let i = 0; i < count; i++) {
+        const offset = (i - (count - 1) / 2) * spread;
+        const targetX = this.player.x + Math.cos(baseAngle + offset) * 100;
+        const targetY = this.player.y + Math.sin(baseAngle + offset) * 100;
+        this.bullets.push(new Bullet(this.player.x, this.player.y, targetX, targetY, this.player.bulletDamage, this.player.bulletSpeed, this.player.pierce));
+      }
+    }
+  }
+
+  update(now) {
+    if (!this.startTime) {
+      this.startTime = now;
+      this.lastSpawnTime = now;
+    }
+
+    if (this.isPaused || this.isGameOver) return;
+
+    this.player.update(this.input, this.width, this.height);
+
+    // تولید دشمن به شکل پیوسته
+    if (now - this.lastSpawnTime > this.spawnInterval) {
+      this.spawnEnemy();
+      this.lastSpawnTime = now;
+      this.spawnInterval = Math.max(250, 1000 - Math.floor((now - this.startTime) / 5000) * 40);
+    }
+
+    this.handleAutoShoot(now);
+
+    for (const bullet of this.bullets) {
+      bullet.update(this.width, this.height);
+    }
+
+    for (const enemy of this.enemies) {
+      enemy.update(this.player);
+
+      const distToPlayer = Math.hypot(enemy.x - this.player.x, enemy.y - this.player.y);
+      if (distToPlayer < enemy.radius + this.player.radius) {
+        this.player.hp -= enemy.damage * 0.04;
+        if (this.player.hp <= 0) {
+          this.gameOver(now);
+        }
+      }
+
+      for (const bullet of this.bullets) {
+        if (!bullet.markedForDeletion) {
+          const dist = Math.hypot(enemy.x - bullet.x, enemy.y - bullet.y);
+          if (dist < enemy.radius + bullet.radius) {
+            enemy.hp -= bullet.damage;
+            sound.playHit();
+            bullet.hits++;
+            if (bullet.hits >= bullet.pierce) bullet.markedForDeletion = true;
+
+            for (let i = 0; i < 4; i++) {
+              this.particles.push(new Particle(enemy.x, enemy.y, enemy.color));
+            }
+
+            if (enemy.hp <= 0) {
+              enemy.markedForDeletion = true;
+              this.kills++;
+              this.gems.push(new Gem(enemy.x, enemy.y, enemy.xpValue));
+              for (let i = 0; i < 8; i++) {
+                this.particles.push(new Particle(enemy.x, enemy.y, enemy.color));
+              }
+            }
+          }
+        }
+      }
+    }
+
+    for (const gem of this.gems) {
+      gem.update(this.player);
+      const dist = Math.hypot(gem.x - this.player.x, gem.y - this.player.y);
+      if (dist < gem.radius + this.player.radius) {
+        gem.markedForDeletion = true;
+        sound.playGem();
+        this.player.gainXp(gem.value);
+      }
+    }
+
+    for (const particle of this.particles) {
+      particle.update();
+    }
+
+    this.bullets = this.bullets.filter(b => !b.markedForDeletion);
+    this.enemies = this.enemies.filter(e => !e.markedForDeletion);
+    this.gems = this.gems.filter(g => !g.markedForDeletion);
+    this.particles = this.particles.filter(p => !p.markedForDeletion);
+
+    this.updateHUD(now);
+  }
+
+  render() {
+    this.ctx.clearRect(0, 0, this.width, this.height);
+
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+    this.ctx.lineWidth = 1;
+    const gridSize = 50;
+    for (let x = 0; x < this.width; x += gridSize) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, 0);
+      this.ctx.lineTo(x, this.height);
+      this.ctx.stroke();
+    }
+    for (let y = 0; y < this.height; y += gridSize) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, y);
+      this.ctx.lineTo(this.width, y);
+      this.ctx.stroke();
+    }
+
+    for (const gem of this.gems) gem.draw(this.ctx);
+    for (const particle of this.particles) particle.draw(this.ctx);
+    for (const bullet of this.bullets) bullet.draw(this.ctx);
+    for (const enemy of this.enemies) enemy.draw(this.ctx);
+    this.player.draw(this.ctx);
+  }
+
+  updateHUD(now) {
+    document.getElementById('lvl-display').innerText = this.player.level;
+    document.getElementById('hp-display').innerText = `${Math.max(0, Math.ceil(this.player.hp))} / ${this.player.maxHp}`;
+    document.getElementById('kill-display').innerText = this.kills;
+
+    const elapsed = Math.max(0, Math.floor((now - this.startTime) / 1000));
+    const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const secs = String(elapsed % 60).padStart(2, '0');
+    document.getElementById('time-display').innerText = `${mins}:${secs}`;
+
+    const xpPercent = Math.min(100, (this.player.xp / this.player.nextXp) * 100);
+    document.getElementById('xp-bar').style.width = `${xpPercent}%`;
+  }
+
+  triggerLevelUpModal() {
+    this.isPaused = true;
+    const modal = document.getElementById('level-up-modal');
+    const container = document.getElementById('upgrade-options');
+    container.innerHTML = '';
+
+    const shuffled = [...this.availableUpgrades].sort(() => 0.5 - Math.random()).slice(0, 3);
+
+    shuffled.forEach(upg => {
+      const card = document.createElement('div');
+      card.className = 'upgrade-card';
+      card.innerHTML = `<h4>${upg.title}</h4><p>${upg.desc}</p>`;
+      card.onclick = () => {
+        upg.apply();
+        modal.classList.add('hidden');
+        this.isPaused = false;
+      };
+      container.appendChild(card);
+    });
+
+    modal.classList.remove('hidden');
+  }
+
+  gameOver(now) {
+    this.isGameOver = true;
+    const modal = document.getElementById('game-over-modal');
+    const stats = document.getElementById('game-over-stats');
+    const elapsed = Math.max(0, Math.floor((now - this.startTime) / 1000));
+    stats.innerHTML = `
+      مدت بقا: <b>${elapsed} ثانیه</b><br>
+      دشمنان کشته شده: <b>${this.kills}</b><br>
+      سطح نهایی: <b>${this.player.level}</b>
+    `;
+    modal.classList.remove('hidden');
+  }
+
+  restart() {
+    document.getElementById('game-over-modal').classList.add('hidden');
+    this.player = new Player(this.width / 2, this.height / 2);
+    this.bullets = [];
+    this.enemies = [];
+    this.gems = [];
+    this.particles = [];
+    this.kills = 0;
+    this.startTime = 0;
+    this.lastSpawnTime = 0;
+    this.isGameOver = false;
+    this.isPaused = false;
+  }
+
+  loop(timestamp) {
+    this.update(timestamp);
+    this.render();
+    requestAnimationFrame(this.loop);
+  }
+}
+
+const sound = new SoundController();
+const game = new GameEngine();
+</script>
+</body>
+</html>
